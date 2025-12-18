@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+**/.env
+
+# Build outputs
+dist/
+build/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+mobile_flutter/.dart_tool/
+mobile_flutter/.flutter-plugins
+mobile_flutter/.flutter-plugins-dependencies
+mobile_flutter/.packages
+mobile_flutter/.pub-cache/
+mobile_flutter/.pub/
+mobile_flutter/build/
+mobile_flutter/.ios/Pods/
+mobile_flutter/.android/
+
+# iOS
+mobile_flutter/ios/Pods/
+mobile_flutter/ios/.symlinks/
+mobile_flutter/ios/Flutter/Flutter.framework
+mobile_flutter/ios/Flutter/Flutter.podspec
+mobile_flutter/ios/ServiceDefinitions.json
+mobile_flutter/ios/Runner/GeneratedPluginRegistrant.*
+
+# Android
+mobile_flutter/android/.gradle/
+mobile_flutter/android/local.properties
+mobile_flutter/android/.idea/
+mobile_flutter/android/app/build/
+mobile_flutter/android/build/
+mobile_flutter/android/.cxx/
+
+# Privacy policy repo (submodule)
+privacy-policy-repo/
+
+# Temporary files
+*.tmp
+*.temp
+

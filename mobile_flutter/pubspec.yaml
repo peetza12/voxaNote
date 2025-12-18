@@ -1,0 +1,38 @@
+name: voxa_note_mobile
+description: MVP Otter-like voice notes app.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+  dio: ^5.7.0
+  http: ^1.2.0
+  # Use latest 5.x record API (AudioRecorder + RecordConfig)
+  record: ^5.2.1
+  just_audio: ^0.9.40
+  path_provider: ^2.1.4
+  shared_preferences: ^2.3.2
+  uuid: ^4.5.1
+
+dependency_overrides:
+  # Ensure we use a platform_interface that defines RecordConfig + new APIs
+  record_platform_interface: ^1.4.0
+  # Replace broken pub.dev Linux impl with a local stub so builds succeed
+  record_linux:
+    path: plugins/record_linux_stub
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
