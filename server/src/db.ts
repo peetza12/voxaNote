@@ -6,7 +6,8 @@ export const pool = new Pool({
 });
 
 export async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> {
-  return pool.query(text, params);
+  const result = await pool.query(text, params);
+  return { rows: result.rows as T[] };
 }
 
 
