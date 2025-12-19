@@ -61,3 +61,8 @@ privacy-policy-repo/
 *.tmp
 *.temp
 
+android/key.properties
+android/*.jks
+android/*.keystore
+
+server/package-lock.json
