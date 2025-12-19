@@ -2,7 +2,11 @@
 nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
-cmds = ["npm install"]
+# Force npm install instead of npm ci
+cmds = [
+  "rm -f package-lock.json || true",
+  "npm install --package-lock=false || npm install"
+]
 
 [phases.build]
 cmds = ["npm run build"]
