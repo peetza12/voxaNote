@@ -6,10 +6,13 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   // Railway's internal DNS (postgres.railway.internal) isn't resolving
   // Use DATABASE_PUBLIC_URL first since we know it works, then fallback to others
+  // If all else fails, use the public URL we know works (temporary fix)
   postgresUrl: process.env.DATABASE_PUBLIC_URL ||
                process.env.DATABASE_URL || 
                process.env.POSTGRES_URL || 
-               '',
+               (process.env.NODE_ENV === 'production' 
+                 ? 'postgresql://postgres:DLFGYdFmbPBJqUwzsZPXQBCDEKyJOggL@metro.proxy.rlwy.net:27075/railway'
+                 : ''),
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   s3Endpoint: process.env.S3_ENDPOINT || '',
   s3PublicEndpoint: process.env.S3_PUBLIC_ENDPOINT || '',
