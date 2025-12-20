@@ -43,20 +43,48 @@ export async function transcribeRecording(
   console.log(`[PROCESS] Converting ${audioBuffer.length} bytes to file object...`);
   const audioFile = await toFile(audioBuffer, 'recording.m4a');
   
-  // Create transcription with proper file format
+  // Create transcription with proper file format and retry logic
   console.log(`[PROCESS] Sending ${audioFile.size} bytes to OpenAI Whisper API...`);
   let transcription: any;
-  try {
-    transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-      response_format: 'verbose_json'
-    });
-    console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[PROCESS] OpenAI transcription failed: ${errorMessage}`);
-    throw new Error(`OpenAI transcription failed: ${errorMessage}`);
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[PROCESS] OpenAI API call attempt ${attempt}/${maxRetries}...`);
+      transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        response_format: 'verbose_json',
+        timeout: 120000 // 2 minute timeout
+      });
+      console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
+      break; // Success, exit retry loop
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message;
+      console.error(`[PROCESS] OpenAI transcription attempt ${attempt} failed: ${errorMessage}`);
+      
+      // If it's a connection error and we have retries left, wait and retry
+      if (attempt < maxRetries && (
+        errorMessage.includes('Connection') || 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('timeout')
+      )) {
+        const waitTime = attempt * 2000; // Exponential backoff: 2s, 4s, 6s
+        console.log(`[PROCESS] Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // If it's not a retryable error or we're out of retries, throw
+      throw new Error(`OpenAI transcription failed: ${errorMessage}`);
+    }
+  }
+  
+  if (!transcription && lastError) {
+    throw new Error(`OpenAI transcription failed after ${maxRetries} attempts: ${lastError.message}`);
   }
 
   const text = transcription.text as string;
