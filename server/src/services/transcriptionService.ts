@@ -23,7 +23,17 @@ export async function transcribeRecording(
   // Extract S3 key from storage URL and download using S3 client with credentials
   const key = getKeyFromStorageUrl(storageUrl);
   console.log(`[PROCESS] Downloading audio from S3 key: ${key}`);
-  const audioBuffer = await downloadFromS3(key);
+  console.log(`[PROCESS] Storage URL: ${storageUrl}`);
+  
+  let audioBuffer: Buffer;
+  try {
+    audioBuffer = await downloadFromS3(key);
+    console.log(`[PROCESS] Downloaded ${audioBuffer.length} bytes from S3`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[PROCESS] S3 download failed: ${errorMessage}`);
+    throw new Error(`Failed to download audio from S3: ${errorMessage}`);
+  }
 
   // OpenAI SDK in Node.js expects a File object
   // Create File from Buffer - Node.js 18+ has File API
@@ -33,11 +43,20 @@ export async function transcribeRecording(
   });
 
   // Create transcription with proper file format
-  const transcription: any = await openai.audio.transcriptions.create({
-    file: audioFile as any, // Type assertion needed for Node.js File compatibility
-    model: 'whisper-1',
-    response_format: 'verbose_json'
-  });
+  console.log(`[PROCESS] Sending ${audioFile.size} bytes to OpenAI Whisper API...`);
+  let transcription: any;
+  try {
+    transcription = await openai.audio.transcriptions.create({
+      file: audioFile as any, // Type assertion needed for Node.js File compatibility
+      model: 'whisper-1',
+      response_format: 'verbose_json'
+    });
+    console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[PROCESS] OpenAI transcription failed: ${errorMessage}`);
+    throw new Error(`OpenAI transcription failed: ${errorMessage}`);
+  }
 
   const text = transcription.text as string;
   const segments: TranscriptSegment[] = (transcription.segments || []).map((s: any) => ({

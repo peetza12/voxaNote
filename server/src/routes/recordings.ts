@@ -65,6 +65,7 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     setImmediate(async () => {
       try {
         console.log(`[PROCESS] Starting transcription for ${id}`);
+        console.log(`[PROCESS] Storage URL: ${recording.storage_url}`);
         const transcript = await transcribeRecording(id, recording.storage_url);
         console.log(`[PROCESS] Transcription complete for ${id}, generating summary...`);
         const summary = await generateAndStoreSummary(id, transcript.text);
@@ -72,7 +73,12 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
         await indexTranscriptChunks(id, transcript.text, transcript.segments);
         console.log(`[PROCESS] Processing complete for ${id}`);
       } catch (error) {
-        console.error(`[PROCESS] Processing failed for ${id}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error(`[PROCESS] Processing failed for ${id}:`, errorMessage);
+        if (errorStack) {
+          console.error(`[PROCESS] Error stack:`, errorStack);
+        }
         // Update status to error
         await query('UPDATE recordings SET status = $1 WHERE id = $2', ['error', id]);
       }
