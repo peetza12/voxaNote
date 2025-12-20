@@ -10,6 +10,7 @@ import { transcribeRecording } from '../services/transcriptionService';
 import { generateAndStoreSummary } from '../services/summaryService';
 import { indexTranscriptChunks } from '../services/retrievalService';
 import { answerQuestion, getMessages } from '../services/chatService';
+import { query } from '../db';
 
 export async function registerRecordingRoutes(app: FastifyInstance, _opts: FastifyPluginOptions) {
   app.post('/', async (request, reply) => {
@@ -53,11 +54,17 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     // Return immediately and let processing happen in background
     setImmediate(async () => {
       try {
+        console.log(`[PROCESS] Starting transcription for ${id}`);
         const transcript = await transcribeRecording(id, recording.storage_url);
+        console.log(`[PROCESS] Transcription complete for ${id}, generating summary...`);
         const summary = await generateAndStoreSummary(id, transcript.text);
+        console.log(`[PROCESS] Summary complete for ${id}, indexing chunks...`);
         await indexTranscriptChunks(id, transcript.text, transcript.segments);
+        console.log(`[PROCESS] Processing complete for ${id}`);
       } catch (error) {
-        console.error(`Processing failed for ${id}:`, error);
+        console.error(`[PROCESS] Processing failed for ${id}:`, error);
+        // Update status to error
+        await query('UPDATE recordings SET status = $1 WHERE id = $2', ['error', id]);
       }
     });
 
