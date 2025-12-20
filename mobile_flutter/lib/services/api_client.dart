@@ -7,20 +7,27 @@ import '../models/recording_models.dart';
 
 // Get API base URL from environment or use smart defaults
 String get apiBaseUrl {
-  // Check for environment variable first
+  // Priority 1: Check for environment variable (set at build time)
   const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
   if (envUrl.isNotEmpty) {
     return envUrl;
   }
   
-  // For iOS/Android physical devices, use network IP instead of localhost
-  if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
-    // Use your Mac's network IP - update this if your IP changes
-    return 'http://192.168.5.89:4000';
+  // Priority 2: Check for production URL (set at build time for release builds)
+  const prodUrl = String.fromEnvironment('PROD_API_BASE_URL', defaultValue: '');
+  if (prodUrl.isNotEmpty) {
+    return prodUrl;
   }
   
-  // Default to localhost for emulators/simulators/web
-  return 'http://localhost:4000';
+  // Priority 3: Production default (Railway backend)
+  // This ensures the app works in production without needing build flags
+  return 'https://voxanote-production.up.railway.app';
+  
+  // Development fallbacks (commented out - uncomment for local development)
+  // if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+  //   return 'http://192.168.5.89:4000';
+  // }
+  // return 'http://localhost:4000';
 }
 
 class ApiClient {
@@ -29,6 +36,10 @@ class ApiClient {
             baseUrl: apiBaseUrl, // Uses getter that auto-detects platform
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 30),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
           ),
         );
 
@@ -98,26 +109,33 @@ class ApiClient {
     // Direct upload to signed S3 URL using http package for more control
     // S3 presigned URLs require exact header matching - use http for precise control
     final file = File(filePath);
-    final bytes = await file.readAsBytes();
+    if (!await file.exists()) {
+      throw Exception('Audio file not found: $filePath');
+    }
     
+    final bytes = await file.readAsBytes();
     final uri = Uri.parse(uploadUrl);
     
-    // Extract Content-Type from signed URL query params if present, otherwise use default
-    final contentType = uri.queryParameters['Content-Type'] ?? 'audio/m4a';
+    // S3 presigned URLs are very sensitive to headers
+    // Only include headers that match what was signed
+    // Railway S3 signed URLs typically only sign the 'host' header
+    // So we should send minimal headers
+    final headers = <String, String>{
+      'Content-Type': 'audio/m4a',
+      'Content-Length': bytes.length.toString(),
+    };
     
     final response = await http.put(
       uri,
       body: bytes,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': bytes.length.toString(),
-      },
+      headers: headers,
     );
     
     if (response.statusCode >= 400) {
       throw Exception(
         'Upload failed: ${response.statusCode} ${response.reasonPhrase}\n'
-        'Response: ${response.body}',
+        'Response: ${response.body}\n'
+        'URL: ${uri.toString().substring(0, uri.toString().indexOf('?'))}...',
       );
     }
   }

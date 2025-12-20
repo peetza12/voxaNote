@@ -42,13 +42,20 @@ export async function createSignedUploadUrl(userId: string | null): Promise<{ ke
   const command = new PutObjectCommand({
     Bucket: env.s3Bucket,
     Key: key,
-    ContentType: 'audio/m4a'
+    ContentType: 'audio/m4a',
+    // Don't include checksum - Railway S3 doesn't require it and it causes issues with mobile uploads
+    // ChecksumAlgorithm: undefined
   });
 
   // Use public S3 client so signed URL uses network IP from the start
   // This ensures the signature is valid for the URL mobile devices will use
   const publicS3 = getPublicS3Client();
-  const url = await getSignedUrl(publicS3, command, { expiresIn: 60 * 15 });
+  // Don't include checksum in signed URL - simpler for mobile clients
+  const url = await getSignedUrl(publicS3, command, { 
+    expiresIn: 60 * 15,
+    // Remove checksum parameters from signed URL
+    signableHeaders: new Set(['host'])
+  });
   
   return { key, url };
 }
