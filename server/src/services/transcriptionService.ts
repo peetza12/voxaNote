@@ -62,14 +62,39 @@ export async function transcribeRecording(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       const errorMessage = lastError.message;
-      console.error(`[PROCESS] OpenAI transcription attempt ${attempt} failed: ${errorMessage}`);
+      const errorStack = lastError.stack;
+      const errorName = lastError.name;
+      
+      // Log full error details for debugging
+      console.error(`[PROCESS] OpenAI transcription attempt ${attempt} failed:`);
+      console.error(`[PROCESS]   Error name: ${errorName}`);
+      console.error(`[PROCESS]   Error message: ${errorMessage}`);
+      if (errorStack) {
+        console.error(`[PROCESS]   Error stack: ${errorStack}`);
+      }
+      
+      // Check if error has additional properties
+      if (error && typeof error === 'object') {
+        const errorObj = error as any;
+        if (errorObj.cause) {
+          console.error(`[PROCESS]   Error cause: ${JSON.stringify(errorObj.cause)}`);
+        }
+        if (errorObj.code) {
+          console.error(`[PROCESS]   Error code: ${errorObj.code}`);
+        }
+        if (errorObj.status) {
+          console.error(`[PROCESS]   HTTP status: ${errorObj.status}`);
+        }
+      }
       
       // If it's a connection error and we have retries left, wait and retry
       if (attempt < maxRetries && (
         errorMessage.includes('Connection') || 
         errorMessage.includes('ECONNREFUSED') ||
         errorMessage.includes('ETIMEDOUT') ||
-        errorMessage.includes('timeout')
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ENOTFOUND') ||
+        errorMessage.includes('network')
       )) {
         const waitTime = attempt * 2000; // Exponential backoff: 2s, 4s, 6s
         console.log(`[PROCESS] Retrying in ${waitTime}ms...`);
