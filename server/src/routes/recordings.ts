@@ -40,18 +40,26 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     return recording;
   });
 
-  app.post('/:id/process', async (request) => {
+  app.post('/:id/process', async (request, reply) => {
     const { id } = request.params as { id: string };
     const recording = await getRecording(id);
     if (!recording) {
-      throw new Error('Not found');
+      return reply.status(404).send({ error: 'Recording not found' });
     }
 
-    const transcript = await transcribeRecording(id, recording.storage_url);
-    const summary = await generateAndStoreSummary(id, transcript.text);
-    await indexTranscriptChunks(id, transcript.text, transcript.segments);
+    // Process asynchronously to avoid timeout
+    // Return immediately and let processing happen in background
+    setImmediate(async () => {
+      try {
+        const transcript = await transcribeRecording(id, recording.storage_url);
+        const summary = await generateAndStoreSummary(id, transcript.text);
+        await indexTranscriptChunks(id, transcript.text, transcript.segments);
+      } catch (error) {
+        console.error(`Processing failed for ${id}:`, error);
+      }
+    });
 
-    return { id, status: 'ready', summary };
+    return reply.status(202).send({ id, status: 'processing' });
   });
 
   app.get('/:id/messages', async (request) => {
