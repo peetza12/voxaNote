@@ -38,69 +38,36 @@ export async function transcribeRecording(
     throw new Error(`Failed to download audio from S3: ${errorMessage}`);
   }
 
-  // OpenAI SDK in Node.js - write to temp file since File API may not be available
-  const tempDir = os.tmpdir();
-  const tempFilePath = path.join(tempDir, `recording-${recordingId}-${Date.now()}.m4a`);
-  
+  // OpenAI SDK accepts Buffer, File, Blob, or ReadStream
+  // Try File first (Node.js 18+), fall back to Buffer if File is not available
+  console.log(`[PROCESS] Sending ${audioBuffer.length} bytes to OpenAI Whisper API...`);
+  let transcription: any;
   try {
-    // Write buffer to temp file
-    fs.writeFileSync(tempFilePath, audioBuffer);
-    console.log(`[PROCESS] Wrote ${audioBuffer.length} bytes to temp file: ${tempFilePath}`);
-    
-    // Create File from temp file using fs.createReadStream
-    // OpenAI SDK accepts File, but we'll use the file path approach
-    const fileStream = fs.createReadStream(tempFilePath);
-    
-    // Create transcription with file stream
-    console.log(`[PROCESS] Sending ${audioBuffer.length} bytes to OpenAI Whisper API...`);
-    let transcription: any;
-    try {
-      // OpenAI SDK accepts File objects, but in Node.js we can use fs.createReadStream
-      // However, the SDK expects a File-like object. Let's try using the temp file path
-      // Actually, the OpenAI SDK for Node.js should accept a File, but if not available,
-      // we can use the ReadStream directly or create a File-like object
-      
-      // Check if File is available, otherwise use alternative
-      if (typeof File !== 'undefined') {
-        const audioFile = new File([audioBuffer], 'recording.m4a', {
-          type: 'audio/m4a',
-          lastModified: Date.now()
-        });
-        transcription = await openai.audio.transcriptions.create({
-          file: audioFile as any,
-          model: 'whisper-1',
-          response_format: 'verbose_json'
-        });
-      } else {
-        // File API not available - use fs.ReadStream with proper mime type
-        // The OpenAI SDK should accept a stream, but let's use a Blob-like approach
-        // Actually, let's just write and read the file as a File object using a polyfill
-        const { File: FilePolyfill } = await import('node:buffer');
-        const audioFile = new FilePolyfill([audioBuffer], 'recording.m4a', {
-          type: 'audio/m4a',
-          lastModified: Date.now()
-        });
-        transcription = await openai.audio.transcriptions.create({
-          file: audioFile as any,
-          model: 'whisper-1',
-          response_format: 'verbose_json'
-        });
-      }
-      
-      console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[PROCESS] OpenAI transcription failed: ${errorMessage}`);
-      throw new Error(`OpenAI transcription failed: ${errorMessage}`);
-    } finally {
-      // Clean up temp file
-      try {
-        fs.unlinkSync(tempFilePath);
-        console.log(`[PROCESS] Cleaned up temp file: ${tempFilePath}`);
-      } catch (cleanupError) {
-        console.warn(`[PROCESS] Failed to clean up temp file: ${tempFilePath}`, cleanupError);
-      }
+    // Check if File is available (Node.js 18+)
+    if (typeof File !== 'undefined') {
+      const audioFile = new File([audioBuffer], 'recording.m4a', {
+        type: 'audio/m4a',
+        lastModified: Date.now()
+      });
+      transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        response_format: 'verbose_json'
+      });
+    } else {
+      // File not available - use Buffer directly (OpenAI SDK accepts Buffer)
+      transcription = await openai.audio.transcriptions.create({
+        file: audioBuffer as any,
+        model: 'whisper-1',
+        response_format: 'verbose_json'
+      });
     }
+    console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[PROCESS] OpenAI transcription failed: ${errorMessage}`);
+    throw new Error(`OpenAI transcription failed: ${errorMessage}`);
+  }
 
   const text = transcription.text as string;
   const segments: TranscriptSegment[] = (transcription.segments || []).map((s: any) => ({
