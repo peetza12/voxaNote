@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,9 +14,10 @@ class RecordingsListPage extends ConsumerStatefulWidget {
   ConsumerState<RecordingsListPage> createState() => _RecordingsListPageState();
 }
 
-class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
+class _RecordingsListPageState extends ConsumerState<RecordingsListPage> with WidgetsBindingObserver {
   final Set<String> _selectedIds = {};
   bool _isSelectionMode = false;
+  Timer? _pollingTimer;
 
   void _toggleSelectionMode() {
     setState(() {
@@ -105,8 +108,86 @@ class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Start polling when page is created
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh when app comes to foreground
+    if (state == AppLifecycleState.resumed) {
+      _refreshRecordings();
+      _startPolling();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Stop polling when app goes to background
+      _stopPolling();
+    }
+  }
+
+  void _refreshRecordings() {
+    ref.read(recordingsListProvider.notifier).refresh();
+  }
+
+  void _startPolling() {
+    // Cancel any existing timer
+    _stopPolling();
+    
+    // Poll every 5 seconds for processing recordings
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      // Check if there are any processing recordings
+      final recordingsAsync = ref.read(recordingsListProvider);
+      recordingsAsync.whenData((recordings) {
+        final hasProcessing = recordings.any((rec) => 
+          rec.status == 'processing' || rec.status == 'pending'
+        );
+        
+        if (hasProcessing) {
+          // Refresh to get updated status
+          _refreshRecordings();
+        } else {
+          // No processing recordings, stop polling
+          _stopPolling();
+        }
+      });
+    });
+  }
+
+  void _stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final recordingsAsync = ref.watch(recordingsListProvider);
+    
+    // Start polling when recordings are loaded and there are processing items
+    recordingsAsync.whenData((recordings) {
+      final hasProcessing = recordings.any((rec) => 
+        rec.status == 'processing' || rec.status == 'pending'
+      );
+      if (hasProcessing && _pollingTimer == null) {
+        _startPolling();
+      } else if (!hasProcessing) {
+        _stopPolling();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -147,7 +228,11 @@ class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
             );
           }
           return RefreshIndicator(
-            onRefresh: () => ref.read(recordingsListProvider.notifier).refresh(),
+            onRefresh: () async {
+              _refreshRecordings();
+              // Small delay to ensure refresh completes
+              await Future.delayed(const Duration(milliseconds: 500));
+            },
             child: ListView.builder(
               itemCount: items.length,
               itemBuilder: (context, index) {
