@@ -118,21 +118,17 @@ class ApiClient {
     
     // S3 presigned URLs are very sensitive to headers
     // The signed URL shows X-Amz-SignedHeaders=host, meaning ONLY host is signed
-    // We should NOT send Content-Type if it's not in the signed headers
-    // Content-Length is usually safe to send
-    final headers = <String, String>{
-      'Content-Length': bytes.length.toString(),
-    };
+    // We must send EXACTLY the headers that are signed, nothing more
+    // The http package may add headers automatically, so we use a raw request
+    final request = http.Request('PUT', uri);
+    request.bodyBytes = bytes;
+    // DO NOT set any headers - only 'host' is signed, and that's set automatically
+    // Explicitly remove ALL headers that http package might add automatically
+    request.headers.clear();
+    // Don't set Content-Length either - let the server calculate it from body
     
-    // Only add Content-Type if the signed URL includes it in signed headers
-    // For Railway S3, the signed URL only signs 'host', so we skip Content-Type
-    // This prevents signature mismatch errors
-    
-    final response = await http.put(
-      uri,
-      body: bytes,
-      headers: headers,
-    );
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
     
     if (response.statusCode >= 400) {
       throw Exception(
