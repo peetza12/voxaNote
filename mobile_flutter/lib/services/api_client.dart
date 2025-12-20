@@ -121,9 +121,10 @@ class ApiClient {
     final client = HttpClient();
     try {
       final request = await client.putUrl(uri);
-      // DO NOT set ANY headers or properties - only 'host' is signed in the presigned URL
-      // Setting contentLength or any headers (Content-Type, User-Agent, etc.) will cause 400 error
-      // Just send the raw bytes
+      // Railway S3 REQUIRES Content-Length header (411 error without it)
+      // But we must NOT set Content-Type or other headers - only 'host' is signed
+      // Set contentLength (this sets the Content-Length header automatically)
+      request.contentLength = bytes.length;
       request.add(bytes);
       await request.close();
       
