@@ -38,46 +38,43 @@ export async function indexTranscriptChunks(
 
   // Store chunks without embeddings (vector extension not available)
   // We'll compute embeddings on-the-fly during search
+  // Delete existing chunks for this recording first to avoid duplicates
+  await query('DELETE FROM transcript_chunks WHERE recording_id = $1', [recordingId]);
+  
   for (let i = 0; i < chunks.length; i++) {
     const start = chunks[i].start ?? null;
     const end = chunks[i].end ?? null;
     
-    // Try to insert with embedding column, fall back to without if vector type doesn't exist
+    // Try to insert without embedding column first (simplest case)
     try {
-      // First, try to insert without embedding (in case table doesn't have embedding column)
       await query(
         `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT DO NOTHING`,
+         VALUES ($1, $2, $3, $4, $5)`,
         [recordingId, i, chunks[i].text, start, end]
       );
     } catch (error) {
-      // If that fails, try with embedding as NULL
+      // If table has embedding column (even if vector type doesn't exist), try with NULL
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('embedding') || errorMessage.includes('vector')) {
-        // Table might have embedding column but vector type doesn't exist
-        // Try inserting with NULL embedding
+      if (errorMessage.includes('embedding') || errorMessage.includes('column')) {
         try {
+          // Try with NULL embedding
           await query(
             `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec, embedding)
-             VALUES ($1, $2, $3, $4, $5, NULL)
-             ON CONFLICT DO NOTHING`,
+             VALUES ($1, $2, $3, $4, $5, NULL)`,
             [recordingId, i, chunks[i].text, start, end]
           );
         } catch (e2) {
-          // Last resort: insert without embedding column
-          await query(
-            `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT DO NOTHING`,
-            [recordingId, i, chunks[i].text, start, end]
-          );
+          console.error(`[RETRIEVAL] Failed to insert chunk ${i}:`, e2);
+          // Continue with other chunks even if one fails
         }
       } else {
-        throw error;
+        console.error(`[RETRIEVAL] Failed to insert chunk ${i}:`, error);
+        // Continue with other chunks
       }
     }
   }
+  
+  console.log(`[RETRIEVAL] Indexed ${chunks.length} chunks for recording ${recordingId}`);
 }
 
 export async function searchTranscriptChunks(
