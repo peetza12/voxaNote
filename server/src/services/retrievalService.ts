@@ -39,42 +39,71 @@ export async function indexTranscriptChunks(
   // Store chunks without embeddings (vector extension not available)
   // We'll compute embeddings on-the-fly during search
   // Delete existing chunks for this recording first to avoid duplicates
-  await query('DELETE FROM transcript_chunks WHERE recording_id = $1', [recordingId]);
+  try {
+    await query('DELETE FROM transcript_chunks WHERE recording_id = $1', [recordingId]);
+  } catch (error) {
+    // Table might not exist yet, that's okay
+    console.warn('[RETRIEVAL] Could not delete existing chunks (table might not exist):', error);
+  }
   
+  let insertedCount = 0;
   for (let i = 0; i < chunks.length; i++) {
     const start = chunks[i].start ?? null;
     const end = chunks[i].end ?? null;
     
-    // Try to insert without embedding column first (simplest case)
+    // Try different insert strategies based on schema
+    let inserted = false;
+    
+    // Strategy 1: Try without embedding column (simplest)
     try {
       await query(
         `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec)
          VALUES ($1, $2, $3, $4, $5)`,
         [recordingId, i, chunks[i].text, start, end]
       );
-    } catch (error) {
-      // If table has embedding column (even if vector type doesn't exist), try with NULL
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('embedding') || errorMessage.includes('column')) {
+      inserted = true;
+      insertedCount++;
+    } catch (error1) {
+      const errorMsg1 = error1 instanceof Error ? error1.message : String(error1);
+      
+      // Strategy 2: Try with NULL embedding (if column exists but allows NULL)
+      if (errorMsg1.includes('embedding') || errorMsg1.includes('column')) {
         try {
-          // Try with NULL embedding
           await query(
             `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec, embedding)
              VALUES ($1, $2, $3, $4, $5, NULL)`,
             [recordingId, i, chunks[i].text, start, end]
           );
-        } catch (e2) {
-          console.error(`[RETRIEVAL] Failed to insert chunk ${i}:`, e2);
-          // Continue with other chunks even if one fails
+          inserted = true;
+          insertedCount++;
+        } catch (error2) {
+          const errorMsg2 = error2 instanceof Error ? error2.message : String(error2);
+          
+          // Strategy 3: Try with empty string for embedding (if TEXT column)
+          if (errorMsg2.includes('NULL') || errorMsg2.includes('constraint')) {
+            try {
+              await query(
+                `INSERT INTO transcript_chunks (recording_id, chunk_index, text, start_sec, end_sec, embedding)
+                 VALUES ($1, $2, $3, $4, $5, '')`,
+                [recordingId, i, chunks[i].text, start, end]
+              );
+              inserted = true;
+              insertedCount++;
+            } catch (error3) {
+              console.error(`[RETRIEVAL] Failed to insert chunk ${i} after all strategies:`, error3);
+            }
+          } else {
+            console.error(`[RETRIEVAL] Failed to insert chunk ${i}:`, error2);
+          }
         }
       } else {
-        console.error(`[RETRIEVAL] Failed to insert chunk ${i}:`, error);
-        // Continue with other chunks
+        // Different error, might be constraint violation or other issue
+        console.warn(`[RETRIEVAL] Failed to insert chunk ${i}:`, error1);
       }
     }
   }
   
-  console.log(`[RETRIEVAL] Indexed ${chunks.length} chunks for recording ${recordingId}`);
+  console.log(`[RETRIEVAL] Indexed ${insertedCount}/${chunks.length} chunks for recording ${recordingId}`);
 }
 
 export async function searchTranscriptChunks(

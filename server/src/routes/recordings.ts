@@ -110,14 +110,10 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
           await indexTranscriptChunks(id, transcript.text, transcript.segments);
           console.log(`[PROCESS] Chunk indexing complete for ${id}`);
         } catch (chunkError) {
-          // Vector extension might not be available - log but don't fail
+          // Chunk indexing errors are non-fatal - log but continue
           const chunkErrorMessage = chunkError instanceof Error ? chunkError.message : String(chunkError);
-          if (chunkErrorMessage.includes('vector') || chunkErrorMessage.includes('does not exist')) {
-            console.warn(`[PROCESS] Vector extension not available, skipping chunk indexing: ${chunkErrorMessage}`);
-          } else {
-            // Re-throw if it's a different error
-            throw chunkError;
-          }
+          console.warn(`[PROCESS] Chunk indexing had issues (chat may be limited): ${chunkErrorMessage}`);
+          // Don't throw - processing should continue even if chunking fails
         }
         
         // Update status to 'ready' after all processing is complete
