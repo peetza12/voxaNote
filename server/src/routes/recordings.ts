@@ -119,7 +119,10 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
             throw chunkError;
           }
         }
-        console.log(`[PROCESS] Processing complete for ${id}`);
+        
+        // Update status to 'ready' after all processing is complete
+        await query('UPDATE recordings SET status = $1 WHERE id = $2', ['ready', id]);
+        console.log(`[PROCESS] Processing complete for ${id}, status set to 'ready'`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorStack = error instanceof Error ? error.stack : undefined;
