@@ -30,6 +30,14 @@ function getPublicS3Client(): S3Client {
 }
 
 export async function createSignedUploadUrl(userId: string | null): Promise<{ key: string; url: string }> {
+  // Validate S3 configuration
+  if (!env.s3Bucket) {
+    throw new Error('S3_BUCKET environment variable is not set. Please configure S3 storage in Railway.');
+  }
+  if (!env.s3AccessKeyId || !env.s3SecretAccessKey) {
+    throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set. Please configure S3 credentials in Railway.');
+  }
+
   const key = `recordings/${userId || 'anon'}/${crypto.randomUUID()}.m4a`;
   const command = new PutObjectCommand({
     Bucket: env.s3Bucket,
@@ -51,7 +59,12 @@ export function getPublicUrlFromKey(key: string): string {
   if (endpoint) {
     return `${endpoint}/${env.s3Bucket}/${key}`;
   }
-  return `https://${env.s3Bucket}.s3.${env.s3Region}.amazonaws.com/${key}`;
+  // Only generate AWS S3 URL if bucket is set
+  if (env.s3Bucket) {
+    return `https://${env.s3Bucket}.s3.${env.s3Region}.amazonaws.com/${key}`;
+  }
+  // Fallback - should not happen if validation is working
+  throw new Error('S3_BUCKET is not configured. Cannot generate public URL.');
 }
 
 
