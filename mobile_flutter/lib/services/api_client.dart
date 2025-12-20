@@ -117,13 +117,16 @@ class ApiClient {
     final uri = Uri.parse(uploadUrl);
     
     // S3 presigned URLs are very sensitive to headers
-    // Only include headers that match what was signed
-    // Railway S3 signed URLs typically only sign the 'host' header
-    // So we should send minimal headers
+    // The signed URL shows X-Amz-SignedHeaders=host, meaning ONLY host is signed
+    // We should NOT send Content-Type if it's not in the signed headers
+    // Content-Length is usually safe to send
     final headers = <String, String>{
-      'Content-Type': 'audio/m4a',
       'Content-Length': bytes.length.toString(),
     };
+    
+    // Only add Content-Type if the signed URL includes it in signed headers
+    // For Railway S3, the signed URL only signs 'host', so we skip Content-Type
+    // This prevents signature mismatch errors
     
     final response = await http.put(
       uri,
