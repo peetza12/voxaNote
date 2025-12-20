@@ -78,6 +78,21 @@ export async function transcribeRecording(
         const errorObj = error as any;
         if (errorObj.cause) {
           console.error(`[PROCESS]   Error cause: ${JSON.stringify(errorObj.cause)}`);
+          // Check nested cause for network errors
+          if (errorObj.cause && typeof errorObj.cause === 'object') {
+            if (errorObj.cause.code) {
+              console.error(`[PROCESS]   Network error code: ${errorObj.cause.code}`);
+            }
+            if (errorObj.cause.errno) {
+              console.error(`[PROCESS]   Network errno: ${errorObj.cause.errno}`);
+            }
+            if (errorObj.cause.syscall) {
+              console.error(`[PROCESS]   Network syscall: ${errorObj.cause.syscall}`);
+            }
+            if (errorObj.cause.hostname) {
+              console.error(`[PROCESS]   Target hostname: ${errorObj.cause.hostname}`);
+            }
+          }
         }
         if (errorObj.code) {
           console.error(`[PROCESS]   Error code: ${errorObj.code}`);
@@ -85,6 +100,8 @@ export async function transcribeRecording(
         if (errorObj.status) {
           console.error(`[PROCESS]   HTTP status: ${errorObj.status}`);
         }
+        // Log all error properties for debugging
+        console.error(`[PROCESS]   All error properties: ${JSON.stringify(Object.keys(errorObj))}`);
       }
       
       // If it's a connection error and we have retries left, wait and retry
