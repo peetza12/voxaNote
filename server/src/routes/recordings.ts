@@ -6,6 +6,7 @@ import {
   getRecording,
   deleteRecording
 } from '../services/recordingService';
+import { createSignedPlaybackUrl, getKeyFromStorageUrl } from '../storage';
 import { transcribeRecording } from '../services/transcriptionService';
 import { generateAndStoreSummary } from '../services/summaryService';
 import { indexTranscriptChunks } from '../services/retrievalService';
@@ -38,7 +39,16 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     if (!recording) {
       return reply.status(404).send({ error: 'Recording not found' });
     }
-    return recording;
+    
+    // Generate signed playback URL for the audio player
+    const key = getKeyFromStorageUrl(recording.storage_url);
+    const playbackUrl = await createSignedPlaybackUrl(key);
+    
+    // Return recording with signed playback URL
+    return {
+      ...recording,
+      playbackUrl
+    };
   });
 
   // Use PUT instead of POST to avoid Railway edge 403 issues

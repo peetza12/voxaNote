@@ -45,6 +45,7 @@ class Recording {
   final DateTime createdAt;
   final int durationSec;
   final String storageUrl;
+  final String? playbackUrl; // Signed URL for audio playback
   final String? transcriptText;
   final RecordingSummary summary;
   final String status;
@@ -55,6 +56,7 @@ class Recording {
     required this.createdAt,
     required this.durationSec,
     required this.storageUrl,
+    this.playbackUrl,
     required this.transcriptText,
     required this.summary,
     required this.status,
@@ -69,6 +71,7 @@ class Recording {
       createdAt: DateTime.parse(json['created_at'] as String),
       durationSec: json['duration_sec'] as int,
       storageUrl: json['storage_url'] as String,
+      playbackUrl: json['playback_url'] as String?,
       transcriptText: json['transcript_text'] as String?,
       summary: RecordingSummary.fromJson(
           json['summary_json'] as Map<String, dynamic>?),

@@ -99,6 +99,32 @@ export function getKeyFromStorageUrl(storageUrl: string): string {
 }
 
 /**
+ * Generate a signed URL for downloading/playing a file from S3
+ * This allows mobile devices to access private files
+ */
+export async function createSignedPlaybackUrl(key: string): Promise<string> {
+  if (!env.s3Bucket) {
+    throw new Error('S3_BUCKET environment variable is not set.');
+  }
+  if (!env.s3AccessKeyId || !env.s3SecretAccessKey) {
+    throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set.');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: env.s3Bucket,
+    Key: key
+  });
+
+  // Use public S3 client so signed URL works for mobile devices
+  const publicS3 = getPublicS3Client();
+  const url = await getSignedUrl(publicS3, command, {
+    expiresIn: 60 * 60 * 24 // 24 hours
+  });
+
+  return url;
+}
+
+/**
  * Download a file from S3 using credentials
  */
 export async function downloadFromS3(key: string): Promise<Buffer> {

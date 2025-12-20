@@ -47,7 +47,9 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
       ),
       body: recordingAsync.when(
         data: (rec) {
-          _player.setUrl(rec.storageUrl);
+          // Use signed playback URL if available, otherwise fall back to storage URL
+          final audioUrl = rec.playbackUrl ?? rec.storageUrl;
+          _player.setUrl(audioUrl);
           return Padding(
             padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
