@@ -246,14 +246,41 @@ Complete step-by-step instructions for deploying to Apple App Store and Google P
 
 ---
 
-### Step 4: Create Archive and Upload
+### Step 4: Configure Production API URL
 
-1. **Clean Build Folder**
+**⚠️ IMPORTANT: Before building for production, you need a deployed backend server.**
+
+The app needs to connect to a production API, not localhost. See `PRODUCTION_SETUP.md` for backend deployment instructions.
+
+**Quick setup:**
+1. Deploy your backend to Railway, Render, or another cloud provider
+2. Get your production API URL (e.g., `https://your-app.railway.app`)
+3. Build with the production URL (see below)
+
+### Step 5: Create Archive and Upload
+
+1. **Build with Production API URL**
+   - Option A: Use the build script:
+     ```bash
+     cd mobile_flutter
+     ./build-ios-release.sh https://your-production-api-url.com
+     ```
+   - Option B: Build manually in Xcode with API URL:
+     - In Xcode: Product → Scheme → Edit Scheme
+     - Arguments → Arguments Passed On Launch
+     - Add: `--dart-define=API_BASE_URL=https://your-production-api-url.com`
+   - Option C: Build from command line:
+     ```bash
+     cd mobile_flutter
+     flutter build ios --release --dart-define=API_BASE_URL=https://your-production-api-url.com
+     ```
+
+2. **Clean Build Folder**
    - In Xcode: Product → Clean Build Folder (Shift+Cmd+K)
 
-2. **Select "Any iOS Device" as target** (not a simulator)
+3. **Select "Any iOS Device" as target** (not a simulator)
 
-3. **Create Archive**
+4. **Create Archive**
    - Product → Archive
    - Wait for archive to complete (may take several minutes)
 
@@ -439,15 +466,33 @@ Complete step-by-step instructions for deploying to Apple App Store and Google P
 
 ---
 
-### Step 3: Build Release APK/AAB
+### Step 3: Configure Production API URL
+
+**⚠️ IMPORTANT: Before building for production, you need a deployed backend server.**
+
+The app needs to connect to a production API, not localhost. See `PRODUCTION_SETUP.md` for backend deployment instructions.
+
+**Quick setup:**
+1. Deploy your backend to Railway, Render, or another cloud provider
+2. Get your production API URL (e.g., `https://your-app.railway.app`)
+3. Build with the production URL (see below)
+
+### Step 4: Build Release APK/AAB
 
 1. **Build App Bundle** (recommended for Play Store):
    ```bash
    cd /Users/peterwylie/VoxaNote/mobile_flutter
-   flutter build appbundle --release
+   flutter build appbundle --release --dart-define=API_BASE_URL=https://your-production-api-url.com
+   ```
+   
+   Or use the build script:
+   ```bash
+   ./build-android-release.sh https://your-production-api-url.com
    ```
 
    Output will be at: `build/app/outputs/bundle/release/app-release.aab`
+   
+   **⚠️ Replace `https://your-production-api-url.com` with your actual deployed backend URL**
 
 2. **Or Build APK** (for direct distribution):
    ```bash

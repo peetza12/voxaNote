@@ -1,0 +1,10 @@
+# Railway configuration
+# This file helps Railway understand how to build and run your app
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

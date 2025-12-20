@@ -106,6 +106,47 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
     );
   }
 
+  Widget _buildTranscriptContent(rec) {
+    if (rec.transcriptText == null || rec.transcriptText!.isEmpty) {
+      if (rec.status == 'processing') {
+        return const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 8),
+            Text('Processing transcription...'),
+          ],
+        );
+      } else if (rec.status == 'error') {
+        return Text(
+          'Transcription failed. Please try uploading again.',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        );
+      }
+      return const Text('Transcription not ready yet.');
+    }
+    
+    // Check if transcript contains an error message
+    if (rec.transcriptText!.startsWith('ERROR:')) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            rec.transcriptText!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          const SizedBox(height: 8),
+          const Text('Please try uploading the recording again.'),
+        ],
+      );
+    }
+    
+    return Text(rec.transcriptText!);
+  }
+
   Widget _buildPlayer(record) {
     return StreamBuilder<PlayerState>(
       stream: _player.playerStateStream,

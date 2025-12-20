@@ -1,4 +1,4 @@
-package com.example.voxa_note_mobile
+package com.voxanote
 
 import io.flutter.embedding.android.FlutterActivity
 
