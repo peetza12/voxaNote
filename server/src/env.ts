@@ -4,8 +4,8 @@ dotenv.config();
 export const env = {
   port: parseInt(process.env.PORT || '4000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  // Check both POSTGRES_URL and DATABASE_URL (Railway might provide either)
-  postgresUrl: process.env.POSTGRES_URL || process.env.DATABASE_URL || '',
+  // Check DATABASE_URL first (Railway provides this automatically), then POSTGRES_URL
+  postgresUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   s3Endpoint: process.env.S3_ENDPOINT || '',
   s3PublicEndpoint: process.env.S3_PUBLIC_ENDPOINT || '',
