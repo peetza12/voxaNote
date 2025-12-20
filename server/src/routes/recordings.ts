@@ -106,7 +106,19 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
         console.log(`[PROCESS] Transcription complete for ${id}, generating summary...`);
         const summary = await generateAndStoreSummary(id, transcript.text);
         console.log(`[PROCESS] Summary complete for ${id}, indexing chunks...`);
-        await indexTranscriptChunks(id, transcript.text, transcript.segments);
+        try {
+          await indexTranscriptChunks(id, transcript.text, transcript.segments);
+          console.log(`[PROCESS] Chunk indexing complete for ${id}`);
+        } catch (chunkError) {
+          // Vector extension might not be available - log but don't fail
+          const chunkErrorMessage = chunkError instanceof Error ? chunkError.message : String(chunkError);
+          if (chunkErrorMessage.includes('vector') || chunkErrorMessage.includes('does not exist')) {
+            console.warn(`[PROCESS] Vector extension not available, skipping chunk indexing: ${chunkErrorMessage}`);
+          } else {
+            // Re-throw if it's a different error
+            throw chunkError;
+          }
+        }
         console.log(`[PROCESS] Processing complete for ${id}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
