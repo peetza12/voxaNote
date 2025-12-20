@@ -135,15 +135,28 @@ class ApiClient {
       request.headers.remove('Accept-Encoding');
       request.headers.remove('Connection');
       
+      // Debug: Log what we're sending
+      print('[UPLOAD DEBUG] URL: ${uri.toString().substring(0, uri.toString().indexOf('?') > 0 ? uri.toString().indexOf('?') : uri.toString().length)}');
+      print('[UPLOAD DEBUG] Headers being sent: ${request.headers}');
+      print('[UPLOAD DEBUG] Content-Length: ${bytes.length}');
+      
       // Send the request
       final streamedResponse = await client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
+      
+      // Debug: Log response
+      print('[UPLOAD DEBUG] Response status: ${response.statusCode}');
+      print('[UPLOAD DEBUG] Response headers: ${response.headers}');
+      if (response.statusCode >= 400) {
+        print('[UPLOAD DEBUG] Error response body: ${response.body}');
+      }
       
       if (response.statusCode >= 400) {
         throw Exception(
           'Upload failed: ${response.statusCode} ${response.reasonPhrase}\n'
           'Response: ${response.body}\n'
-          'URL: ${uri.toString().substring(0, uri.toString().indexOf('?'))}...',
+          'URL: ${uri.toString().substring(0, uri.toString().indexOf('?') > 0 ? uri.toString().indexOf('?') : uri.toString().length)}...\n'
+          'Headers sent: ${request.headers}',
         );
       }
     } finally {
