@@ -121,9 +121,9 @@ class ApiClient {
     final client = HttpClient();
     try {
       final request = await client.putUrl(uri);
-      // DO NOT set ANY headers - only 'host' is signed in the presigned URL
-      // Setting any other header (Content-Type, Content-Length, User-Agent, etc.) will cause 400 error
-      request.contentLength = bytes.length;
+      // DO NOT set ANY headers or properties - only 'host' is signed in the presigned URL
+      // Setting contentLength or any headers (Content-Type, User-Agent, etc.) will cause 400 error
+      // Just send the raw bytes
       request.add(bytes);
       await request.close();
       
