@@ -33,6 +33,34 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     return recordings;
   });
 
+  // Diagnostic endpoint - must be before /:id route
+  app.get('/:id/status', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const recording = await getRecording(id);
+    if (!recording) {
+      return reply.status(404).send({ error: 'Recording not found' });
+    }
+    
+    // Check if file exists in S3
+    let s3Check = { exists: false, error: null as string | null };
+    try {
+      const key = getKeyFromStorageUrl(recording.storage_url);
+      const { downloadFromS3 } = await import('../storage');
+      await downloadFromS3(key);
+      s3Check.exists = true;
+    } catch (error) {
+      s3Check.error = error instanceof Error ? error.message : String(error);
+    }
+    
+    return {
+      id: recording.id,
+      status: recording.status,
+      storageUrl: recording.storage_url,
+      hasTranscript: !!recording.transcript_text,
+      s3Check
+    };
+  });
+
   app.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const recording = await getRecording(id);
@@ -111,34 +139,6 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     const { id } = request.params as { id: string };
     await deleteRecording(id);
     return reply.status(204).send();
-  });
-
-  // Diagnostic endpoint to check processing status and last error
-  app.get('/:id/status', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const recording = await getRecording(id);
-    if (!recording) {
-      return reply.status(404).send({ error: 'Recording not found' });
-    }
-    
-    // Check if file exists in S3
-    let s3Check = { exists: false, error: null as string | null };
-    try {
-      const key = getKeyFromStorageUrl(recording.storage_url);
-      const { downloadFromS3 } = await import('../storage');
-      await downloadFromS3(key);
-      s3Check.exists = true;
-    } catch (error) {
-      s3Check.error = error instanceof Error ? error.message : String(error);
-    }
-    
-    return {
-      id: recording.id,
-      status: recording.status,
-      storageUrl: recording.storage_url,
-      hasTranscript: !!recording.transcript_text,
-      s3Check
-    };
   });
 }
 
