@@ -29,7 +29,7 @@ export async function transcribeRecording(
   console.log(`[PROCESS] Storage URL: ${storageUrl}`);
   
   // Retry S3 download in case file isn't immediately available
-  let audioBuffer: Buffer;
+  let audioBuffer: Buffer | null = null;
   const maxS3Retries = 3;
   let lastS3Error: Error | null = null;
   
@@ -61,8 +61,9 @@ export async function transcribeRecording(
     }
   }
   
-  if (!audioBuffer && lastS3Error) {
-    throw new Error(`Failed to download audio from S3 after ${maxS3Retries} attempts: ${lastS3Error.message}`);
+  if (!audioBuffer) {
+    const errorMsg = lastS3Error ? lastS3Error.message : 'Unknown error';
+    throw new Error(`Failed to download audio from S3 after ${maxS3Retries} attempts: ${errorMsg}`);
   }
 
   // Convert Buffer to File-like object using OpenAI SDK's toFile utility
