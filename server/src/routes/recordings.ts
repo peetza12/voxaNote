@@ -107,8 +107,12 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
         if (errorStack) {
           console.error(`[PROCESS] Error stack:`, errorStack);
         }
-        // Update status to error
-        await query('UPDATE recordings SET status = $1 WHERE id = $2', ['error', id]);
+        // Store error message in database for debugging
+        // Store in transcript_text temporarily so we can retrieve it
+        await query(
+          'UPDATE recordings SET status = $1, transcript_text = $2 WHERE id = $3',
+          ['error', `ERROR: ${errorMessage}`, id]
+        );
       }
     });
 
