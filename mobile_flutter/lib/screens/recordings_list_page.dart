@@ -157,6 +157,21 @@ class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
                 final subtitle = rec.summary.bulletSummary.isNotEmpty
                     ? rec.summary.bulletSummary.first
                     : rec.transcriptText ?? '';
+                
+                // Show processing status
+                String? statusText;
+                Icon? statusIcon;
+                if (rec.status == 'processing') {
+                  statusText = 'Processing...';
+                  statusIcon = const Icon(Icons.hourglass_empty, size: 16);
+                } else if (rec.status == 'error') {
+                  statusText = 'Processing failed';
+                  statusIcon = const Icon(Icons.error_outline, size: 16, color: Colors.red);
+                } else if (rec.status == 'pending') {
+                  statusText = 'Pending';
+                  statusIcon = const Icon(Icons.schedule, size: 16);
+                }
+                
                 final isSelected = _selectedIds.contains(rec.id);
                 return ListTile(
                   leading: _isSelectionMode
@@ -166,10 +181,36 @@ class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
                         )
                       : null,
                   title: Text(rec.summary.title),
-                  subtitle: Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (statusText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              if (statusIcon != null) ...[
+                                statusIcon,
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: rec.status == 'error' ? Colors.red : null,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (statusText == null && subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
                   trailing: _isSelectionMode
                       ? null
