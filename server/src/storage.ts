@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
 import crypto from 'crypto';
@@ -72,6 +72,59 @@ export function getPublicUrlFromKey(key: string): string {
   }
   // Fallback - should not happen if validation is working
   throw new Error('S3_BUCKET is not configured. Cannot generate public URL.');
+}
+
+/**
+ * Extract S3 key from a storage URL
+ * Handles formats like:
+ * - https://storage.railway.app/bucket/key
+ * - https://bucket.s3.region.amazonaws.com/key
+ */
+export function getKeyFromStorageUrl(storageUrl: string): string {
+  try {
+    const url = new URL(storageUrl);
+    // Railway format: https://storage.railway.app/bucket/key
+    if (url.pathname.startsWith('/')) {
+      const parts = url.pathname.split('/').filter(p => p);
+      // First part is bucket, rest is key
+      return parts.slice(1).join('/');
+    }
+    // AWS format: https://bucket.s3.region.amazonaws.com/key
+    return url.pathname.substring(1); // Remove leading /
+  } catch {
+    // If URL parsing fails, try to extract key from common patterns
+    const match = storageUrl.match(/\/([^/]+\/.+)$/);
+    return match ? match[1] : storageUrl;
+  }
+}
+
+/**
+ * Download a file from S3 using credentials
+ */
+export async function downloadFromS3(key: string): Promise<Buffer> {
+  if (!env.s3Bucket) {
+    throw new Error('S3_BUCKET environment variable is not set.');
+  }
+  if (!env.s3AccessKeyId || !env.s3SecretAccessKey) {
+    throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set.');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: env.s3Bucket,
+    Key: key
+  });
+
+  const response = await s3.send(command);
+  
+  // Convert stream to buffer
+  const chunks: Uint8Array[] = [];
+  if (response.Body) {
+    for await (const chunk of response.Body as any) {
+      chunks.push(chunk);
+    }
+  }
+  
+  return Buffer.concat(chunks);
 }
 
 

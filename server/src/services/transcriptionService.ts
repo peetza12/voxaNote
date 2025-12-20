@@ -1,7 +1,7 @@
 import { openai } from '../openaiClient';
 import { query } from '../db';
 import { updateRecordingStatus } from './recordingService';
-import axios from 'axios';
+import { downloadFromS3, getKeyFromStorageUrl } from '../storage';
 
 export interface TranscriptSegment {
   start: number;
@@ -20,11 +20,10 @@ export async function transcribeRecording(
 ): Promise<TranscriptResult> {
   await updateRecordingStatus(recordingId, 'processing');
 
-  // Download audio then send to OpenAI transcription
-  const audioResponse = await axios.get<ArrayBuffer>(storageUrl, {
-    responseType: 'arraybuffer'
-  });
-  const audioBuffer = Buffer.from(audioResponse.data);
+  // Extract S3 key from storage URL and download using S3 client with credentials
+  const key = getKeyFromStorageUrl(storageUrl);
+  console.log(`[PROCESS] Downloading audio from S3 key: ${key}`);
+  const audioBuffer = await downloadFromS3(key);
 
   // OpenAI SDK in Node.js expects a File object
   // Create File from Buffer - Node.js 18+ has File API
