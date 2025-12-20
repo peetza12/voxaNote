@@ -76,32 +76,59 @@ export async function transcribeRecording(
       // Check if error has additional properties
       if (error && typeof error === 'object') {
         const errorObj = error as any;
-        if (errorObj.cause) {
-          console.error(`[PROCESS]   Error cause: ${JSON.stringify(errorObj.cause)}`);
-          // Check nested cause for network errors
-          if (errorObj.cause && typeof errorObj.cause === 'object') {
-            if (errorObj.cause.code) {
-              console.error(`[PROCESS]   Network error code: ${errorObj.cause.code}`);
-            }
-            if (errorObj.cause.errno) {
-              console.error(`[PROCESS]   Network errno: ${errorObj.cause.errno}`);
-            }
-            if (errorObj.cause.syscall) {
-              console.error(`[PROCESS]   Network syscall: ${errorObj.cause.syscall}`);
-            }
-            if (errorObj.cause.hostname) {
-              console.error(`[PROCESS]   Target hostname: ${errorObj.cause.hostname}`);
-            }
-          }
-        }
+        
+        // Log all important error properties
         if (errorObj.code) {
           console.error(`[PROCESS]   Error code: ${errorObj.code}`);
         }
         if (errorObj.status) {
           console.error(`[PROCESS]   HTTP status: ${errorObj.status}`);
         }
-        // Log all error properties for debugging
-        console.error(`[PROCESS]   All error properties: ${JSON.stringify(Object.keys(errorObj))}`);
+        if (errorObj.type) {
+          console.error(`[PROCESS]   Error type: ${errorObj.type}`);
+        }
+        if (errorObj.request_id) {
+          console.error(`[PROCESS]   Request ID: ${errorObj.request_id}`);
+        }
+        
+        // Deep dive into cause
+        if (errorObj.cause) {
+          console.error(`[PROCESS]   Error cause (raw): ${JSON.stringify(errorObj.cause, null, 2)}`);
+          
+          // Check nested cause for network errors
+          if (errorObj.cause && typeof errorObj.cause === 'object') {
+            const cause = errorObj.cause;
+            if (cause.code) {
+              console.error(`[PROCESS]   Network error code: ${cause.code}`);
+            }
+            if (cause.errno) {
+              console.error(`[PROCESS]   Network errno: ${cause.errno}`);
+            }
+            if (cause.syscall) {
+              console.error(`[PROCESS]   Network syscall: ${cause.syscall}`);
+            }
+            if (cause.hostname) {
+              console.error(`[PROCESS]   Target hostname: ${cause.hostname}`);
+            }
+            if (cause.message) {
+              console.error(`[PROCESS]   Cause message: ${cause.message}`);
+            }
+            // Log all cause properties
+            console.error(`[PROCESS]   Cause properties: ${JSON.stringify(Object.keys(cause))}`);
+          }
+        }
+        
+        // Log the full error object (excluding circular references)
+        try {
+          const errorString = JSON.stringify(errorObj, (key, value) => {
+            if (key === 'stack') return undefined; // Skip stack trace
+            if (typeof value === 'function') return '[Function]';
+            return value;
+          }, 2);
+          console.error(`[PROCESS]   Full error object: ${errorString.substring(0, 1000)}`); // Limit to first 1000 chars
+        } catch (e) {
+          console.error(`[PROCESS]   Could not stringify error object`);
+        }
       }
       
       // If it's a connection error and we have retries left, wait and retry
