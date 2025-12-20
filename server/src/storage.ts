@@ -135,19 +135,38 @@ export async function downloadFromS3(key: string): Promise<Buffer> {
     throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set.');
   }
 
+  console.log(`[S3] Downloading from bucket: ${env.s3Bucket}, key: ${key}`);
+  
   const command = new GetObjectCommand({
     Bucket: env.s3Bucket,
     Key: key
   });
 
-  const response = await s3.send(command);
+  let response;
+  try {
+    response = await s3.send(command);
+    console.log(`[S3] GetObject response received, ContentLength: ${response.ContentLength || 'unknown'}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[S3] GetObject failed: ${errorMessage}`);
+    throw new Error(`S3 GetObject failed: ${errorMessage}`);
+  }
   
   // Convert stream to buffer
   const chunks: Uint8Array[] = [];
   if (response.Body) {
-    for await (const chunk of response.Body as any) {
-      chunks.push(chunk);
+    try {
+      for await (const chunk of response.Body as any) {
+        chunks.push(chunk);
+      }
+      console.log(`[S3] Downloaded ${chunks.length} chunks, total size: ${Buffer.concat(chunks).length} bytes`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[S3] Stream reading failed: ${errorMessage}`);
+      throw new Error(`Failed to read S3 stream: ${errorMessage}`);
     }
+  } else {
+    throw new Error('S3 response has no Body');
   }
   
   return Buffer.concat(chunks);
