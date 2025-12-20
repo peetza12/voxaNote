@@ -32,11 +32,11 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     return recordings;
   });
 
-  app.get('/:id', async (request) => {
+  app.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const recording = await getRecording(id);
     if (!recording) {
-      throw new Error('Not found');
+      return reply.status(404).send({ error: 'Recording not found' });
     }
     return recording;
   });
