@@ -79,9 +79,9 @@ class ApiClient {
   Future<void> triggerProcessing(String id) async {
     try {
       print('[PROCESS DEBUG] Triggering processing for: $id');
-      // Fastify requires a body when Content-Type is application/json
-      // Send empty JSON object to satisfy the requirement
-      final response = await _dio.post('/recordings/$id/process', data: {});
+      // Use PUT instead of POST to avoid Railway edge 403 blocking
+      // Railway edge blocks POST to /:id/process pattern
+      final response = await _dio.put('/recordings/$id/process', data: {});
       print('[PROCESS DEBUG] Processing started successfully: ${response.statusCode}');
     } catch (e) {
       print('[PROCESS DEBUG] Processing failed: $e');

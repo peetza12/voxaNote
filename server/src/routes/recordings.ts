@@ -40,7 +40,9 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     return recording;
   });
 
-  app.post('/:id/process', async (request, reply) => {
+  // Use PUT instead of POST to avoid Railway edge 403 issues
+  // Railway edge seems to block POST to /:id/process pattern
+  app.put('/:id/process', async (request, reply) => {
     const { id } = request.params as { id: string };
     const recording = await getRecording(id);
     if (!recording) {
