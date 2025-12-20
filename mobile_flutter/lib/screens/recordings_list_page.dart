@@ -63,25 +63,36 @@ class _RecordingsListPageState extends ConsumerState<RecordingsListPage> {
 
     if (confirmed != true) return;
 
+    // Store count before clearing
+    final count = _selectedIds.length;
+    final idsToDelete = Set<String>.from(_selectedIds);
+
     try {
       final api = ref.read(apiClientProvider);
-      for (final id in _selectedIds) {
+      for (final id in idsToDelete) {
+        print('[DELETE] Deleting recording: $id');
         await api.deleteRecording(id);
       }
+      
+      // Clear selection and exit selection mode
       setState(() {
         _selectedIds.clear();
         _isSelectionMode = false;
       });
-      // Refresh the list
-      ref.read(recordingsListProvider.notifier).refresh();
+      
+      // Refresh the list to show updated data
+      await ref.read(recordingsListProvider.notifier).refresh();
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deleted ${_selectedIds.length} recording${_selectedIds.length > 1 ? 's' : ''}'),
+            content: Text('Deleted $count recording${count > 1 ? 's' : ''}'),
+            backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
+      print('[DELETE] Error during delete: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

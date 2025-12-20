@@ -114,7 +114,18 @@ class ApiClient {
   }
 
   Future<void> deleteRecording(String id) async {
-    await _dio.delete('/recordings/$id');
+    try {
+      print('[DELETE DEBUG] Deleting recording: $id');
+      final response = await _dio.delete('/recordings/$id');
+      print('[DELETE DEBUG] Delete response: ${response.statusCode}');
+    } catch (e) {
+      print('[DELETE DEBUG] Delete failed: $e');
+      if (e is DioException) {
+        print('[DELETE DEBUG] Status: ${e.response?.statusCode}');
+        print('[DELETE DEBUG] Response: ${e.response?.data}');
+      }
+      rethrow;
+    }
   }
 
   Future<void> uploadAudio({
