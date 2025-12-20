@@ -94,10 +94,11 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
 
     // Process asynchronously to avoid timeout
     // Return immediately and let processing happen in background
-    // Add a small delay to ensure S3 upload has fully completed
+    // Add a delay to ensure S3 upload has fully completed
     setImmediate(async () => {
-      // Wait 2 seconds to ensure S3 upload is fully committed
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait 5 seconds to ensure S3 upload is fully committed
+      // Railway Storage may need more time to commit the file
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       try {
         console.log(`[PROCESS] Starting transcription for ${id}`);

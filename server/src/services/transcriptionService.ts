@@ -28,15 +28,41 @@ export async function transcribeRecording(
   console.log(`[PROCESS] Downloading audio from S3 bucket: ${bucket}, key: ${key}`);
   console.log(`[PROCESS] Storage URL: ${storageUrl}`);
   
+  // Retry S3 download in case file isn't immediately available
   let audioBuffer: Buffer;
-  try {
-    const { downloadFromS3 } = await import('../storage');
-    audioBuffer = await downloadFromS3(key, bucket);
-    console.log(`[PROCESS] Downloaded ${audioBuffer.length} bytes from S3`);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[PROCESS] S3 download failed: ${errorMessage}`);
-    throw new Error(`Failed to download audio from S3: ${errorMessage}`);
+  const maxS3Retries = 3;
+  let lastS3Error: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxS3Retries; attempt++) {
+    try {
+      const { downloadFromS3 } = await import('../storage');
+      audioBuffer = await downloadFromS3(key, bucket);
+      console.log(`[PROCESS] Downloaded ${audioBuffer.length} bytes from S3 (attempt ${attempt})`);
+      break; // Success, exit retry loop
+    } catch (error) {
+      lastS3Error = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastS3Error.message;
+      console.error(`[PROCESS] S3 download attempt ${attempt} failed: ${errorMessage}`);
+      
+      // If it's a "key does not exist" error and we have retries left, wait and retry
+      if (attempt < maxS3Retries && (
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('Shadow bucket') ||
+        errorMessage.includes('NoSuchKey')
+      )) {
+        const waitTime = attempt * 2000; // 2s, 4s, 6s
+        console.log(`[PROCESS] File may not be committed yet, retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // If it's not a retryable error or we're out of retries, throw
+      throw new Error(`Failed to download audio from S3 after ${attempt} attempts: ${errorMessage}`);
+    }
+  }
+  
+  if (!audioBuffer && lastS3Error) {
+    throw new Error(`Failed to download audio from S3 after ${maxS3Retries} attempts: ${lastS3Error.message}`);
   }
 
   // Convert Buffer to File-like object using OpenAI SDK's toFile utility
