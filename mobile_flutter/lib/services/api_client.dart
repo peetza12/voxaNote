@@ -77,9 +77,21 @@ class ApiClient {
   }
 
   Future<void> triggerProcessing(String id) async {
-    // Fastify requires a body when Content-Type is application/json
-    // Send empty JSON object to satisfy the requirement
-    await _dio.post('/recordings/$id/process', data: {});
+    try {
+      print('[PROCESS DEBUG] Triggering processing for: $id');
+      // Fastify requires a body when Content-Type is application/json
+      // Send empty JSON object to satisfy the requirement
+      final response = await _dio.post('/recordings/$id/process', data: {});
+      print('[PROCESS DEBUG] Processing started successfully: ${response.statusCode}');
+    } catch (e) {
+      print('[PROCESS DEBUG] Processing failed: $e');
+      if (e is DioException) {
+        print('[PROCESS DEBUG] Status: ${e.response?.statusCode}');
+        print('[PROCESS DEBUG] Response: ${e.response?.data}');
+        print('[PROCESS DEBUG] Headers: ${e.response?.headers}');
+      }
+      rethrow;
+    }
   }
 
   Future<List<ChatMessage>> getChatMessages(String recordingId) async {
