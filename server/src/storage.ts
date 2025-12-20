@@ -75,27 +75,46 @@ export function getPublicUrlFromKey(key: string): string {
 }
 
 /**
- * Extract S3 key from a storage URL
+ * Extract S3 bucket and key from a storage URL
  * Handles formats like:
  * - https://storage.railway.app/bucket/key
  * - https://bucket.s3.region.amazonaws.com/key
  */
-export function getKeyFromStorageUrl(storageUrl: string): string {
+export function parseStorageUrl(storageUrl: string): { bucket: string; key: string } {
   try {
     const url = new URL(storageUrl);
     // Railway format: https://storage.railway.app/bucket/key
     if (url.pathname.startsWith('/')) {
       const parts = url.pathname.split('/').filter(p => p);
+      if (parts.length < 2) {
+        throw new Error(`Invalid storage URL format: ${storageUrl}`);
+      }
       // First part is bucket, rest is key
-      return parts.slice(1).join('/');
+      return {
+        bucket: parts[0],
+        key: parts.slice(1).join('/')
+      };
     }
     // AWS format: https://bucket.s3.region.amazonaws.com/key
-    return url.pathname.substring(1); // Remove leading /
+    return {
+      bucket: env.s3Bucket, // Use env var for AWS format
+      key: url.pathname.substring(1) // Remove leading /
+    };
   } catch {
-    // If URL parsing fails, try to extract key from common patterns
-    const match = storageUrl.match(/\/([^/]+\/.+)$/);
-    return match ? match[1] : storageUrl;
+    // If URL parsing fails, try to extract from common patterns
+    const match = storageUrl.match(/https?:\/\/[^/]+\/([^/]+)\/(.+)$/);
+    if (match) {
+      return { bucket: match[1], key: match[2] };
+    }
+    throw new Error(`Could not parse storage URL: ${storageUrl}`);
   }
+}
+
+/**
+ * Extract S3 key from a storage URL (backward compatibility)
+ */
+export function getKeyFromStorageUrl(storageUrl: string): string {
+  return parseStorageUrl(storageUrl).key;
 }
 
 /**
@@ -126,19 +145,22 @@ export async function createSignedPlaybackUrl(key: string): Promise<string> {
 
 /**
  * Download a file from S3 using credentials
+ * @param key - S3 key (path to file)
+ * @param bucket - Optional bucket name. If not provided, uses env.s3Bucket or extracts from storage URL
  */
-export async function downloadFromS3(key: string): Promise<Buffer> {
-  if (!env.s3Bucket) {
-    throw new Error('S3_BUCKET environment variable is not set.');
+export async function downloadFromS3(key: string, bucket?: string): Promise<Buffer> {
+  const bucketName = bucket || env.s3Bucket;
+  if (!bucketName) {
+    throw new Error('S3_BUCKET environment variable is not set and no bucket provided.');
   }
   if (!env.s3AccessKeyId || !env.s3SecretAccessKey) {
     throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set.');
   }
 
-  console.log(`[S3] Downloading from bucket: ${env.s3Bucket}, key: ${key}`);
+  console.log(`[S3] Downloading from bucket: ${bucketName}, key: ${key}`);
   
   const command = new GetObjectCommand({
-    Bucket: env.s3Bucket,
+    Bucket: bucketName,
     Key: key
   });
 

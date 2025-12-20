@@ -20,14 +20,17 @@ export async function transcribeRecording(
 ): Promise<TranscriptResult> {
   await updateRecordingStatus(recordingId, 'processing');
 
-  // Extract S3 key from storage URL and download using S3 client with credentials
-  const key = getKeyFromStorageUrl(storageUrl);
-  console.log(`[PROCESS] Downloading audio from S3 key: ${key}`);
+  // Extract S3 bucket and key from storage URL
+  // Railway Storage requires using the bucket name from the URL, not the env var
+  const { parseStorageUrl } = await import('../storage');
+  const { bucket, key } = parseStorageUrl(storageUrl);
+  console.log(`[PROCESS] Downloading audio from S3 bucket: ${bucket}, key: ${key}`);
   console.log(`[PROCESS] Storage URL: ${storageUrl}`);
   
   let audioBuffer: Buffer;
   try {
-    audioBuffer = await downloadFromS3(key);
+    const { downloadFromS3 } = await import('../storage');
+    audioBuffer = await downloadFromS3(key, bucket);
     console.log(`[PROCESS] Downloaded ${audioBuffer.length} bytes from S3`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
