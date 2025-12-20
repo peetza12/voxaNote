@@ -42,11 +42,13 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     }
     
     // Check if file exists in S3
-    let s3Check = { exists: false, error: null as string | null };
+    let s3Check = { exists: false, error: null as string | null, bucket: null as string | null, key: null as string | null };
     try {
-      const key = getKeyFromStorageUrl(recording.storage_url);
-      const { downloadFromS3 } = await import('../storage');
-      await downloadFromS3(key);
+      const { parseStorageUrl, downloadFromS3 } = await import('../storage');
+      const { bucket, key } = parseStorageUrl(recording.storage_url);
+      s3Check.bucket = bucket;
+      s3Check.key = key;
+      await downloadFromS3(key, bucket);
       s3Check.exists = true;
     } catch (error) {
       s3Check.error = error instanceof Error ? error.message : String(error);
