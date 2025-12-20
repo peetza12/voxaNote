@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
@@ -106,8 +107,8 @@ class ApiClient {
     required String uploadUrl,
     required String filePath,
   }) async {
-    // Direct upload to signed S3 URL using http package for more control
-    // S3 presigned URLs require exact header matching - use http for precise control
+    // Use dart:io HttpClient for maximum control over headers
+    // S3 presigned URLs require EXACT header matching - only 'host' is signed
     final file = File(filePath);
     if (!await file.exists()) {
       throw Exception('Audio file not found: $filePath');
@@ -116,26 +117,29 @@ class ApiClient {
     final bytes = await file.readAsBytes();
     final uri = Uri.parse(uploadUrl);
     
-    // S3 presigned URLs are very sensitive to headers
-    // The signed URL shows X-Amz-SignedHeaders=host, meaning ONLY host is signed
-    // We must send EXACTLY the headers that are signed, nothing more
-    // The http package may add headers automatically, so we use a raw request
-    final request = http.Request('PUT', uri);
-    request.bodyBytes = bytes;
-    // DO NOT set any headers - only 'host' is signed, and that's set automatically
-    // Explicitly remove ALL headers that http package might add automatically
-    request.headers.clear();
-    // Don't set Content-Length either - let the server calculate it from body
-    
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    
-    if (response.statusCode >= 400) {
-      throw Exception(
-        'Upload failed: ${response.statusCode} ${response.reasonPhrase}\n'
-        'Response: ${response.body}\n'
-        'URL: ${uri.toString().substring(0, uri.toString().indexOf('?'))}...',
-      );
+    // Use HttpClient directly to have complete control over headers
+    final client = HttpClient();
+    try {
+      final request = await client.putUrl(uri);
+      // DO NOT set ANY headers - only 'host' is signed in the presigned URL
+      // Setting any other header (Content-Type, Content-Length, User-Agent, etc.) will cause 400 error
+      request.contentLength = bytes.length;
+      request.add(bytes);
+      await request.close();
+      
+      final response = await request.done;
+      final statusCode = response.statusCode;
+      
+      if (statusCode >= 400) {
+        final responseBody = await response.transform(const SystemEncoding().decoder).join();
+        throw Exception(
+          'Upload failed: $statusCode ${response.reasonPhrase}\n'
+          'Response: $responseBody\n'
+          'URL: ${uri.toString().substring(0, uri.toString().indexOf('?'))}...',
+        );
+      }
+    } finally {
+      client.close();
     }
   }
 }
