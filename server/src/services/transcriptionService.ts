@@ -2,6 +2,9 @@ import { openai } from '../openaiClient';
 import { query } from '../db';
 import { updateRecordingStatus } from './recordingService';
 import { downloadFromS3, getKeyFromStorageUrl } from '../storage';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 export interface TranscriptSegment {
   start: number;
