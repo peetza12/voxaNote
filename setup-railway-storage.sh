@@ -73,6 +73,13 @@ fi
 # Link project if needed
 if [ ! -f .railway/project.json ]; then
     echo "Linking Railway project..."
+    echo ""
+    echo "📋 Railway CLI will ask you to select:"
+    echo "   1. Project: Select 'VoxaNote' (or your project name)"
+    echo "   2. Environment: Select 'production'"
+    echo "   3. Service: Select 'voxaNote' (your Node.js backend service)"
+    echo ""
+    read -p "Press Enter to continue with linking..."
     railway link
 fi
 
