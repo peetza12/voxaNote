@@ -37,8 +37,9 @@ export async function transcribeRecording(
 
   // OpenAI SDK in Node.js expects a File object
   // Create File from Buffer - Node.js 18+ has File API
-  // Buffer extends Uint8Array which is compatible with BlobPart
-  const audioFile = new File([audioBuffer as Uint8Array], 'recording.m4a', {
+  // Convert Buffer to Uint8Array for File constructor compatibility
+  const audioUint8Array = new Uint8Array(audioBuffer);
+  const audioFile = new File([audioUint8Array], 'recording.m4a', {
     type: 'audio/m4a',
     lastModified: Date.now()
   });
