@@ -2,6 +2,7 @@ import { openai } from '../openaiClient';
 import { query } from '../db';
 import { updateRecordingStatus } from './recordingService';
 import { downloadFromS3, getKeyFromStorageUrl } from '../storage';
+import { toFile } from 'openai/uploads';
 
 export interface TranscriptSegment {
   start: number;
@@ -38,30 +39,19 @@ export async function transcribeRecording(
     throw new Error(`Failed to download audio from S3: ${errorMessage}`);
   }
 
-  // OpenAI SDK accepts Buffer, File, Blob, or ReadStream
-  // Try File first (Node.js 18+), fall back to Buffer if File is not available
-  console.log(`[PROCESS] Sending ${audioBuffer.length} bytes to OpenAI Whisper API...`);
+  // Convert Buffer to File-like object using OpenAI SDK's toFile utility
+  console.log(`[PROCESS] Converting ${audioBuffer.length} bytes to file object...`);
+  const audioFile = await toFile(audioBuffer, 'recording.m4a');
+  
+  // Create transcription with proper file format
+  console.log(`[PROCESS] Sending ${audioFile.size} bytes to OpenAI Whisper API...`);
   let transcription: any;
   try {
-    // Check if File is available (Node.js 18+)
-    if (typeof File !== 'undefined') {
-      const audioFile = new File([audioBuffer], 'recording.m4a', {
-        type: 'audio/m4a',
-        lastModified: Date.now()
-      });
-      transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-        response_format: 'verbose_json'
-      });
-    } else {
-      // File not available - use Buffer directly (OpenAI SDK accepts Buffer)
-      transcription = await openai.audio.transcriptions.create({
-        file: audioBuffer as any,
-        model: 'whisper-1',
-        response_format: 'verbose_json'
-      });
-    }
+    transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      response_format: 'verbose_json'
+    });
     console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
