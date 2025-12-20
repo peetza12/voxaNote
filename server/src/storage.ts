@@ -120,17 +120,20 @@ export function getKeyFromStorageUrl(storageUrl: string): string {
 /**
  * Generate a signed URL for downloading/playing a file from S3
  * This allows mobile devices to access private files
+ * @param key - S3 key (path to file)
+ * @param bucket - Optional bucket name. If not provided, uses env.s3Bucket
  */
-export async function createSignedPlaybackUrl(key: string): Promise<string> {
-  if (!env.s3Bucket) {
-    throw new Error('S3_BUCKET environment variable is not set.');
+export async function createSignedPlaybackUrl(key: string, bucket?: string): Promise<string> {
+  const bucketName = bucket || env.s3Bucket;
+  if (!bucketName) {
+    throw new Error('S3_BUCKET environment variable is not set and no bucket provided.');
   }
   if (!env.s3AccessKeyId || !env.s3SecretAccessKey) {
     throw new Error('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set.');
   }
 
   const command = new GetObjectCommand({
-    Bucket: env.s3Bucket,
+    Bucket: bucketName,
     Key: key
   });
 

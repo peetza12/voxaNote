@@ -69,8 +69,10 @@ export async function registerRecordingRoutes(app: FastifyInstance, _opts: Fasti
     }
     
     // Generate signed playback URL for the audio player
-    const key = getKeyFromStorageUrl(recording.storage_url);
-    const playbackUrl = await createSignedPlaybackUrl(key);
+    // Extract bucket from URL for Railway Storage compatibility
+    const { parseStorageUrl } = await import('../storage');
+    const { bucket, key } = parseStorageUrl(recording.storage_url);
+    const playbackUrl = await createSignedPlaybackUrl(key, bucket);
     
     // Return recording with signed playback URL
     return {
