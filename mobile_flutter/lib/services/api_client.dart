@@ -107,7 +107,7 @@ class ApiClient {
     required String uploadUrl,
     required String filePath,
   }) async {
-    // Use dart:io HttpClient for maximum control over headers
+    // Use http package's low-level API for maximum control
     // S3 presigned URLs require EXACT header matching - only 'host' is signed
     final file = File(filePath);
     if (!await file.exists()) {
@@ -117,32 +117,32 @@ class ApiClient {
     final bytes = await file.readAsBytes();
     final uri = Uri.parse(uploadUrl);
     
-    // Use HttpClient directly to have complete control over headers
-    final client = HttpClient();
+    // Use http.Client with manual request construction for precise control
+    final client = http.Client();
     try {
-      final request = await client.putUrl(uri);
+      // Create a raw request - this gives us complete control
+      final request = http.Request('PUT', uri);
+      request.bodyBytes = bytes;
       
-      // Railway S3 REQUIRES Content-Length header (411 error without it)
-      // But we must NOT set Content-Type or other headers - only 'host' is signed
-      // Set contentLength (this sets the Content-Length header automatically)
-      request.contentLength = bytes.length;
+      // Set ONLY Content-Length header (Railway S3 requires it)
+      // DO NOT set Content-Type or any other headers - only 'host' is signed
+      request.headers['Content-Length'] = bytes.length.toString();
       
-      // Explicitly prevent HttpClient from adding unwanted headers
-      // Only Content-Length should be set (via contentLength property above)
-      request.headers.clear();
+      // Explicitly remove any headers that might have been set automatically
+      request.headers.remove('Content-Type');
+      request.headers.remove('User-Agent');
+      request.headers.remove('Accept');
+      request.headers.remove('Accept-Encoding');
+      request.headers.remove('Connection');
       
-      // Write the bytes
-      request.add(bytes);
-      await request.close();
+      // Send the request
+      final streamedResponse = await client.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
       
-      final response = await request.done;
-      final statusCode = response.statusCode;
-      
-      if (statusCode >= 400) {
-        final responseBody = await response.transform(const SystemEncoding().decoder).join();
+      if (response.statusCode >= 400) {
         throw Exception(
-          'Upload failed: $statusCode ${response.reasonPhrase}\n'
-          'Response: $responseBody\n'
+          'Upload failed: ${response.statusCode} ${response.reasonPhrase}\n'
+          'Response: ${response.body}\n'
           'URL: ${uri.toString().substring(0, uri.toString().indexOf('?'))}...',
         );
       }
