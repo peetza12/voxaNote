@@ -7,7 +7,9 @@ if (!env.openaiApiKey) {
 }
 
 export const openai = new OpenAI({
-  apiKey: env.openaiApiKey
+  apiKey: env.openaiApiKey,
+  maxRetries: 3,
+  timeout: 60000 // 60 second timeout
 });
 
 
