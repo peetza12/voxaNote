@@ -83,27 +83,42 @@ if [ ! -f .railway/project.json ]; then
     railway link
 fi
 
-# Set variables
-echo "Setting S3_ENDPOINT..."
-railway variables set S3_ENDPOINT="$ENDPOINT"
-
-echo "Setting S3_PUBLIC_ENDPOINT..."
-railway variables set S3_PUBLIC_ENDPOINT="$ENDPOINT"
-
-echo "Setting S3_REGION..."
-railway variables set S3_REGION="us-east-1"
-
-echo "Setting S3_ACCESS_KEY_ID..."
-railway variables set S3_ACCESS_KEY_ID="$ACCESS_KEY_ID"
-
-echo "Setting S3_SECRET_ACCESS_KEY..."
-railway variables set S3_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
-
-echo "Setting S3_BUCKET..."
-railway variables set S3_BUCKET="$BUCKET"
-
+# Railway CLI doesn't support setting variables directly
+# We'll provide the values for manual entry
 echo ""
-echo "✅ Done! Railway will automatically redeploy."
+echo "=========================================="
+echo "📋 SET THESE VARIABLES IN RAILWAY:"
+echo "=========================================="
+echo ""
+echo "Go to: https://railway.app/project"
+echo "1. Click your project: VoxaNote Audio"
+echo "2. Click the service: voxaNote (your Node.js backend)"
+echo "3. Click the 'Variables' tab"
+echo "4. Click '+ New Variable' for each one below:"
+echo ""
+echo "Variable Name: S3_ENDPOINT"
+echo "Value: $ENDPOINT"
+echo ""
+echo "Variable Name: S3_PUBLIC_ENDPOINT"
+echo "Value: $ENDPOINT"
+echo ""
+echo "Variable Name: S3_REGION"
+echo "Value: us-east-1"
+echo ""
+echo "Variable Name: S3_ACCESS_KEY_ID"
+echo "Value: $ACCESS_KEY_ID"
+echo ""
+echo "Variable Name: S3_SECRET_ACCESS_KEY"
+echo "Value: $SECRET_ACCESS_KEY"
+echo ""
+echo "Variable Name: S3_BUCKET"
+echo "Value: $BUCKET"
+echo ""
+echo "=========================================="
+echo ""
+read -p "Press Enter when you've added all 6 variables in Railway..."
+echo ""
+echo "✅ Railway will automatically redeploy once you save the variables."
 echo ""
 echo "Testing in 30 seconds..."
 sleep 30
