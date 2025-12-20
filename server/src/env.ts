@@ -1,11 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const env = {
-  port: parseInt(process.env.PORT || '4000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
-  // Railway's internal DNS (postgres.railway.internal) isn't resolving
-  // Get the connection string from env vars
+// Railway's internal DNS (postgres.railway.internal) isn't resolving
+// Get the connection string from env vars and replace internal hostname with public one
+function getPostgresUrl(): string {
   let dbUrl = process.env.DATABASE_PUBLIC_URL ||
               process.env.DATABASE_URL || 
               process.env.POSTGRES_URL || 
@@ -28,7 +26,13 @@ export const env = {
     dbUrl = 'postgresql://postgres:DLFGYdFmbPBJqUwzsZPXQBCDEKyJOggL@metro.proxy.rlwy.net:27075/railway';
   }
   
-  postgresUrl: dbUrl,
+  return dbUrl;
+}
+
+export const env = {
+  port: parseInt(process.env.PORT || '4000', 10),
+  nodeEnv: process.env.NODE_ENV || 'development',
+  postgresUrl: getPostgresUrl(),
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   s3Endpoint: process.env.S3_ENDPOINT || '',
   s3PublicEndpoint: process.env.S3_PUBLIC_ENDPOINT || '',
