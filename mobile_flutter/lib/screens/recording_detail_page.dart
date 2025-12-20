@@ -92,7 +92,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  Text(rec.transcriptText ?? 'Transcription not ready yet.'),
+                  _buildTranscriptContent(rec),
                 ],
               ),
             ),
