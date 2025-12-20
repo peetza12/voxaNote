@@ -55,8 +55,7 @@ export async function transcribeRecording(
       transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
-        response_format: 'verbose_json',
-        timeout: 120000 // 2 minute timeout
+        response_format: 'verbose_json'
       });
       console.log(`[PROCESS] OpenAI transcription successful, text length: ${transcription.text?.length || 0}`);
       break; // Success, exit retry loop
