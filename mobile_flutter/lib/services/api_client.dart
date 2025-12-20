@@ -121,10 +121,17 @@ class ApiClient {
     final client = HttpClient();
     try {
       final request = await client.putUrl(uri);
+      
       // Railway S3 REQUIRES Content-Length header (411 error without it)
       // But we must NOT set Content-Type or other headers - only 'host' is signed
       // Set contentLength (this sets the Content-Length header automatically)
       request.contentLength = bytes.length;
+      
+      // Explicitly prevent HttpClient from adding unwanted headers
+      // Only Content-Length should be set (via contentLength property above)
+      request.headers.clear();
+      
+      // Write the bytes
       request.add(bytes);
       await request.close();
       
