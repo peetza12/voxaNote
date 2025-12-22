@@ -9,19 +9,34 @@ export interface Recording {
   title: string;
   created_at: string;
   duration_sec: number;
-  storage_url: string;
+  storage_url: string | null;
   transcript_text: string | null;
   transcript_json: any | null;
   summary_json: any | null;
   status: RecordingStatus;
 }
 
+// Legacy function: Create recording with upload URL (for backward compatibility)
 export async function createRecording(input: {
   userId?: string | null;
   title: string;
   durationSec: number;
-}): Promise<{ recording: Recording; uploadUrl: string }> {
-  const { userId = null, title, durationSec } = input;
+  transcriptText?: string;
+}): Promise<{ recording: Recording; uploadUrl?: string }> {
+  const { userId = null, title, durationSec, transcriptText } = input;
+  
+  // If transcript text is provided, use new flow (no storage needed)
+  if (transcriptText) {
+    const res = await query<Recording>(
+      `INSERT INTO recordings (user_id, title, duration_sec, storage_url, transcript_text, status)
+       VALUES ($1, $2, $3, NULL, $4, 'pending')
+       RETURNING *`,
+      [userId, title, durationSec, transcriptText]
+    );
+    return { recording: res.rows[0] };
+  }
+  
+  // Legacy flow: create with storage URL
   const { key, url } = await createSignedUploadUrl(userId);
   const storageUrl = getPublicUrlFromKey(key);
 
