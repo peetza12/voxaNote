@@ -1,7 +1,7 @@
 name: voxa_note_mobile
 description: MVP Otter-like voice notes app.
 publish_to: "none"
-version: 0.1.0+2
+version: 0.1.0+3
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -14,12 +14,14 @@ dependencies:
   go_router: ^14.2.0
   dio: ^5.7.0
   http: ^1.2.0
-  # Use latest 5.x record API (AudioRecorder + RecordConfig)
+  # Use latest 5.x record API (AudioRecorder + RecordConfig) - kept for compatibility but not used for transcription
   record: ^5.2.1
   just_audio: ^0.9.40
   path_provider: ^2.1.4
   shared_preferences: ^2.3.2
   uuid: ^4.5.1
+  # Real-time speech-to-text transcription
+  speech_to_text: ^7.0.0
 
 dependency_overrides:
   # Ensure we use a platform_interface that defines RecordConfig + new APIs

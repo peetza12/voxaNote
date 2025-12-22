@@ -155,6 +155,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const Text(
               'MVP is single-user by default. Multi-user auth can be added later without changing the core flows.',
             ),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'About',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text('VoxaNote'),
+            const SizedBox(height: 4),
+            Text(
+              'Version 0.1.0 (Build 3)',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
       ),
